@@ -1,2 +1,2 @@
 # smartVpageAdapterlibrary
-test
+最新jitpack问题，module化管理。ViewPager2Demo为demo展示，SmartViewPager2Adapter发包项目。
