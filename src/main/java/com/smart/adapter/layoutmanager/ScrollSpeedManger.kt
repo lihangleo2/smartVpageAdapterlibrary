@@ -35,7 +35,7 @@ class ScrollSpeedManger : LinearLayoutManager {
             if (smartViewPager2Adapter.getScrollTime() < 100) return
             try {
                 val recyclerView = viewPager2.getChildAt(0) as RecyclerView
-                recyclerView.overScrollMode = RecyclerView.OVER_SCROLL_NEVER
+//                recyclerView.overScrollMode = RecyclerView.OVER_SCROLL_NEVER
                 val speedManger = (recyclerView.layoutManager as LinearLayoutManager?)?.let { ScrollSpeedManger(viewPager2,smartViewPager2Adapter, it) }
                 recyclerView.layoutManager = speedManger
                 val LayoutMangerField = ViewPager2::class.java.getDeclaredField("mLayoutManager")
