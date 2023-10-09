@@ -219,11 +219,19 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
 
     fun getItem(@IntRange(from = 0) position: Int): SmartFragmentTypeExEntity {
-        return mDataList[position]
+        return if (mInfinite) {
+            mDataList[position % mDataList.size]
+        } else {
+            mDataList[position]
+        }
     }
 
     fun getItemOrNull(@IntRange(from = 0) position: Int): SmartFragmentTypeExEntity? {
-        return mDataList.getOrNull(position)
+        return if (mInfinite) {
+            mDataList.getOrNull(position % mDataList.size)
+        } else {
+            mDataList.getOrNull(position)
+        }
     }
 
     /**
@@ -290,7 +298,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             }
             false
         }
-        ScrollSpeedManger.reflectLayoutManager(mViewPager2,this)
+        ScrollSpeedManger.reflectLayoutManager(mViewPager2, this)
     }
 
 
@@ -515,7 +523,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
                     return
                 }
                 //没有设置无线循，且size=1时，不进行滚动
-                if (!smartViewPager2Adapter.mInfinite && count==1){
+                if (!smartViewPager2Adapter.mInfinite && count == 1) {
                     return
                 }
 
@@ -548,7 +556,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         return this
     }
 
-    private fun removeLifecycleObserver(){
+    private fun removeLifecycleObserver() {
         mLifecycle?.removeObserver(mLifecycleEventObserver)
     }
 
@@ -563,12 +571,12 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
 
-    fun setScrollTime(scrollTime:Int):SmartViewPager2Adapter{
+    fun setScrollTime(scrollTime: Int): SmartViewPager2Adapter {
         this.mScrollTime = scrollTime
         return this
     }
 
-    fun getScrollTime():Int{
+    fun getScrollTime(): Int {
         return mScrollTime
     }
 
