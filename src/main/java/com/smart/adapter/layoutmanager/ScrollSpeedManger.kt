@@ -22,7 +22,7 @@ class ScrollSpeedManger : LinearLayoutManager {
     override fun smoothScrollToPosition(recyclerView: RecyclerView?, state: RecyclerView.State?, position: Int) {
         val linearSmoothScroller: LinearSmoothScroller = object : LinearSmoothScroller(recyclerView!!.context) {
             override fun calculateTimeForDeceleration(dx: Int): Int {
-                return smartViewPager2Adapter.getScrollTime()
+                return smartViewPager2Adapter.getScrollTime().toInt()
             }
         }
         linearSmoothScroller.targetPosition = position

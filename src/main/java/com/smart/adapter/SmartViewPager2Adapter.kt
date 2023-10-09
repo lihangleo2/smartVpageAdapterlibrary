@@ -77,7 +77,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
     // 轮播切换时间
-    private var mScrollTime: Int = 600
+    private var mScrollTime: Long = 600L
 
 
     constructor(fragmentActivity: FragmentActivity, bindViewPager2: ViewPager2) : super(
@@ -164,7 +164,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
     override fun getItemId(position: Int): Long {
         return if (mInfinite) {
-            if (mDataList.size < mScreenMinNum) {
+            if (mDataList.size <= mScreenMinNum) {
                 /*
                 * 注意无线循环时，数据不足一屏时，重写getItemId hashCode值
                 * */
@@ -275,7 +275,8 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
                 if (mInfinite) {
                     var wholeNum = Int.MAX_VALUE / 2 / mDataList.size
                     mViewPager2.post {
-                        mViewPager2.setCurrentItem(wholeNum * mDataList.size, false)
+                        //-mDataList.size 解决一致添加数据时，滚动问题
+                        mViewPager2.setCurrentItem(wholeNum * mDataList.size-mDataList.size, false)
                     }
                 }
             }
@@ -571,12 +572,12 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
 
-    fun setScrollTime(scrollTime: Int): SmartViewPager2Adapter {
+    fun setScrollTime(scrollTime: Long): SmartViewPager2Adapter {
         this.mScrollTime = scrollTime
         return this
     }
 
-    fun getScrollTime(): Int {
+    fun getScrollTime(): Long {
         return mScrollTime
     }
 
@@ -597,13 +598,5 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     fun stop(): SmartViewPager2Adapter {
         mViewPager2.removeCallbacks(mLoopTask)
         return this;
-    }
-
-    fun getRealSizeByInfinite():Int{
-        return if (mInfinite){
-            -1
-        }else{
-            mDataList.size
-        }
     }
 }
