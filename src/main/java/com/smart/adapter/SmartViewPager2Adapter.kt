@@ -598,4 +598,12 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         mViewPager2.removeCallbacks(mLoopTask)
         return this;
     }
+
+    fun getRealSizeByInfinite():Int{
+        return if (mInfinite){
+            -1
+        }else{
+            mDataList.size
+        }
+    }
 }
