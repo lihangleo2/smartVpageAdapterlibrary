@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="CircleIndicator">
+        <!-- 圆形指示器半径 -->
+        <attr name="lh_indicator_radius" format="dimension" />
+        <!-- 指示器选中颜色 -->
+        <attr name="lh_indicator_selectColor" format="color" />
+        <!-- 指示器未选中颜色 -->
+        <attr name="lh_indicator_unselectColor" format="color" />
+        <!-- 指示器间隔距离 -->
+        <attr name="lh_indicator_space" format="dimension" />
+        <!-- 指示器是否跟随viewPager2滑动 -->
+        <attr name="lh_indicator_scrollWithViewPager2" format="boolean" />
+        <!-- 不同模式 -->
+        <attr name="lh_indicator_mode">
+            <!-- 充满模式 -->
+            <enum name="fill" value="1" />
+            <!-- 边框模式 -->
+            <enum name="stroke" value="2" />
+        </attr>
+        <!-- stroke下模式下边框width宽度 -->
+        <attr name="lh_indicator_strokeWidth" format="dimension" />
+    </declare-styleable>
+
+
+    <declare-styleable name="LineIndicator">
+        <!-- 指示器选中颜色 -->
+        <attr name="line_indicator_selectColor" format="color" />
+        <!-- 指示器未选中颜色 -->
+        <attr name="line_indicator_unselectColor" format="color" />
+        <!-- 指示器间隔距离 -->
+        <attr name="line_indicator_space" format="dimension" />
+        <!-- 指示器是否跟随viewPager2滑动 -->
+        <attr name="line_indicator_scrollWithViewPager2" format="boolean" />
+    </declare-styleable>
+
+
+    <!--    <declare-styleable name="SmartLoadingView">-->
+    <!--        &lt;!&ndash;        正常情况下背景颜色值&ndash;&gt;-->
+    <!--        <attr name="background_normal" format="color" />-->
+    <!--        &lt;!&ndash;        错误文案&ndash;&gt;-->
+    <!--        <attr name="errorMsg" format="string" />-->
+    <!--        &lt;!&ndash;        错误背景颜色&ndash;&gt;-->
+    <!--        <attr name="background_error" format="color" />-->
+    <!--        &lt;!&ndash;        不可点击状态下，背景颜色值(不建议修改)&ndash;&gt;-->
+    <!--        <attr name="background_cannotClick" format="color" />-->
+    <!--        &lt;!&ndash;        圆角属性&ndash;&gt;-->
+    <!--        <attr name="cornerRaius" format="dimension" />-->
+    <!--        &lt;!&ndash;        设置文字来回滚动模式&ndash;&gt;-->
+    <!--        <attr name="textScrollMode">-->
+    <!--            <enum name="normal" value="1" />-->
+    <!--            <enum name="marquee" value="2" />-->
+    <!--        </attr>-->
+    <!--        &lt;!&ndash;        按钮是否可以点击状态&ndash;&gt;-->
+    <!--        <attr name="smart_clickable" format="boolean" />-->
+    <!--        &lt;!&ndash;        文字滚动速度，只有文字滚动时生效。这里是每个文子滚动出屏幕外所需的时间&ndash;&gt;-->
+    <!--        <attr name="speed" format="integer" />-->
+
+
+    <!--        <attr name="click_mode">-->
+    <!--            &lt;!&ndash; 正常的样式 &ndash;&gt;-->
+    <!--            <enum name="normal" value="1" />-->
+    <!--            &lt;!&ndash; 隐藏的样式 &ndash;&gt;-->
+    <!--            <enum name="hide" value="2" />-->
+    <!--            &lt;!&ndash; 平移到中间的样式&ndash;&gt;-->
+    <!--            <enum name="translate_center" value="3" />-->
+    <!--            &lt;!&ndash; 走失败模式的样式&ndash;&gt;-->
+    <!--            <enum name="like_faile" value="4" />-->
+
+    <!--        </attr>-->
+
+    <!--    </declare-styleable>-->
+</resources>

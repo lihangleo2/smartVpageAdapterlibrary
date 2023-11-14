@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="default_indicator_selcolor">#FFFFFF</color>
+    <color name="default_indicator_unselcolor">#333333</color>
+    <color name="default_indicator_unselcolor_line">#80FFFFFF</color>
+</resources>

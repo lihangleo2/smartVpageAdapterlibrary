@@ -1,7 +1,10 @@
 package com.smart.adapter
 
+import android.util.Log
 import android.view.MotionEvent
+import android.view.View
 import androidx.annotation.IntRange
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
@@ -12,11 +15,17 @@ import androidx.recyclerview.widget.RecyclerView.AdapterDataObserver
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
+import com.smart.adapter.indicator.BaseIndicator
+import com.smart.adapter.indicator.CircleIndicator
+import com.smart.adapter.indicator.LineIndicator
+import com.smart.adapter.indicator.SmartGravity
+import com.smart.adapter.indicator.SmartIndicator
 import com.smart.adapter.interf.OnLoadMoreListener
 import com.smart.adapter.interf.OnRefreshListener
 import com.smart.adapter.interf.OnRefreshLoadMoreListener
 import com.smart.adapter.interf.SmartFragmentImpl
 import com.smart.adapter.interf.SmartFragmentTypeExEntity
+import com.smart.adapter.interf.onSideListener
 import com.smart.adapter.layoutmanager.ScrollSpeedManger
 import com.smart.adapter.transformer.SmartTransformer
 import com.smart.adapter.transformer.StereoPagerTransformer
@@ -41,6 +50,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     private lateinit var mViewPager2: ViewPager2
     private var mRefreshListener: OnRefreshListener? = null
     private var mLoadMoreListener: OnLoadMoreListener? = null
+    private var mSideListener: onSideListener? = null
     private val fragments = mutableMapOf<Int, Class<*>>()
     private var defaultFragment: Class<*>? = null
 
@@ -78,6 +88,23 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
     // 轮播切换时间
     private var mScrollTime: Long = 600L
+
+    /*
+    * 左右边缘滑动监听
+    * */
+    private var mStartSideXorY = 0
+
+    //临界值触发
+    private val criticalValue = 200
+
+    //滑动方向
+    private var mSwapFlag = 0
+
+    /**
+     * 绑定的指示器，动态添加数据时，指示器会跟随变化
+     * 一个ViewPager2不支持绑定多个指示器
+     * */
+    private var mBindIndicator: BaseIndicator? = null
 
 
     constructor(fragmentActivity: FragmentActivity, bindViewPager2: ViewPager2) : super(
@@ -123,6 +150,11 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         return this
     }
 
+    fun setOnSideListener(listener: onSideListener): SmartViewPager2Adapter {
+        this.mSideListener = listener
+        return this
+    }
+
     private fun checkIndexAndCallBack(position: Int) {
         //如果是无线循环模式，则不支持监听
         if (mInfinite) {
@@ -157,7 +189,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
     override fun getItemCount() = if (mInfinite) {
-        Int.MAX_VALUE
+        Int.MAX_VALUE / mDataList.size * mDataList.size
     } else {
         mDataList.size
     }
@@ -189,6 +221,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             updateLoadmore(lastIndex, list.size)
         }
         updateRefreshLoadMoreState()
+        notifyDataSetIndicator(mBindIndicator)
         return this
     }
 
@@ -204,6 +237,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         if (list.isNullOrEmpty()) {
             return this
         }
+        Log.e("这是添加数据的", "addFrontData====")
         mPreloadDataList.addAll(0, list)
         updateWithIdel(mViewPager2.scrollState)
         return this
@@ -220,6 +254,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
     fun getItem(@IntRange(from = 0) position: Int): SmartFragmentTypeExEntity {
         return if (mInfinite) {
+            Log.e("这里神的有问题嘛", "$position ---- ${mDataList.size} ==== ${position.toFloat() % mDataList.size.toFloat()}     这2个一样嘛${Int.MAX_VALUE}   这是按size取整${Int.MAX_VALUE / mDataList.size * mDataList.size}")
             mDataList[position % mDataList.size]
         } else {
             mDataList[position]
@@ -273,21 +308,60 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             override fun onChanged() {
                 super.onChanged()
                 if (mInfinite) {
-                    var wholeNum = Int.MAX_VALUE / 2 / mDataList.size
+                    var wholeNum = itemCount / 2 / mDataList.size
                     mViewPager2.post {
                         //-mDataList.size 解决一致添加数据时，滚动问题
-                        mViewPager2.setCurrentItem(wholeNum * mDataList.size-mDataList.size, false)
+                        mViewPager2.setCurrentItem(if (mViewPager2.currentItem != wholeNum * mDataList.size) wholeNum * mDataList.size else wholeNum * mDataList.size - mDataList.size, false)
                     }
                 }
             }
+
+            override fun onItemRangeChanged(positionStart: Int, itemCount: Int) {
+                super.onItemRangeChanged(positionStart, itemCount)
+
+            }
+
         })
 
+        setTouchListenerForViewPager2()
+        ScrollSpeedManger.reflectLayoutManager(mViewPager2, this)
+    }
+
+
+    private fun setTouchListenerForViewPager2() {
         mViewPager2.getChildAt(0).setOnTouchListener { _, p1 ->
             when (p1?.action) {
                 MotionEvent.ACTION_DOWN -> {
                     if (mLoopTask != null) {
                         stop()
                     }
+
+                    //边缘滑动监听，区分横竖方向
+                    mStartSideXorY = if (mViewPager2.orientation == ViewPager2.ORIENTATION_HORIZONTAL) {
+                        p1.x.toInt()
+                    } else {
+                        p1.y.toInt()
+                    }
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    //区分横竖方向
+                    if (mViewPager2.orientation == ViewPager2.ORIENTATION_HORIZONTAL) {
+                        if (mStartSideXorY - p1.x > criticalValue && mViewPager2.currentItem == itemCount - 1) {
+                            mSwapFlag = 1
+                        }
+                        if (p1.x - mStartSideXorY > criticalValue && mViewPager2.currentItem == 0) {
+                            mSwapFlag = -1
+                        }
+                    } else {
+                        if (mStartSideXorY - p1.y > criticalValue && mViewPager2.currentItem == itemCount - 1) {
+                            mSwapFlag = 1
+                        }
+                        if (p1.y - mStartSideXorY > criticalValue && mViewPager2.currentItem == 0) {
+                            mSwapFlag = -1
+                        }
+                    }
+
                 }
 
                 MotionEvent.ACTION_CANCEL,
@@ -295,11 +369,17 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
                     if (mLoopTask != null) {
                         start()
                     }
+
+                    if (mSwapFlag == 1) {
+                        mSideListener?.onRightSide()
+                    } else if (mSwapFlag == -1) {
+                        mSideListener?.onLeftSide()
+                    }
+                    mSwapFlag = 0
                 }
             }
             false
         }
-        ScrollSpeedManger.reflectLayoutManager(mViewPager2, this)
     }
 
 
@@ -347,6 +427,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             }
             mPreloadDataList.clear()
             updateRefreshLoadMoreState()
+            notifyDataSetIndicator(mBindIndicator)
         }
 
         if (mInfinite) {
@@ -432,6 +513,12 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         this.mPreLoadLimit = preLoadLimit
         return this
     }
+
+    fun setUserEnabled(isUserInputEnabled:Boolean):SmartViewPager2Adapter{
+        mViewPager2.isUserInputEnabled = isUserInputEnabled
+        return this
+    }
+
 
     fun setPagerTransformer(smartTransformer: SmartTransformer): SmartViewPager2Adapter {
         when (smartTransformer) {
@@ -599,4 +686,149 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         mViewPager2.removeCallbacks(mLoopTask)
         return this;
     }
+
+
+    /**
+     * 指示器添加核心代码
+     * */
+    fun withIndicator(smartIndicator: SmartIndicator = SmartIndicator.CIRCLE, smartGravity: SmartGravity = SmartGravity.CENTER_HORIZONTAL_BOTTOM, horizontalMargin: Int = mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin).toInt(), verticalMargin: Int = mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin).toInt()): SmartViewPager2Adapter {
+        createCircleIndicator(smartIndicator, smartGravity, horizontalMargin, verticalMargin)
+        return this
+    }
+
+    fun withIndicator(mBindIndicator: BaseIndicator): SmartViewPager2Adapter {
+        if (this.mBindIndicator == null) {
+            this.mBindIndicator = mBindIndicator
+            registerScrollListenerWithIndicator(mBindIndicator)
+            notifyDataSetIndicator(mBindIndicator)
+        }
+        return this
+    }
+
+
+    private fun createCircleIndicator(smartIndicator: SmartIndicator, smartGravity: SmartGravity, horizontalMargin: Int, verticalMargin: Int) {
+        //因为不是自定义view,利用viewPager2的父布局去添加指示器，此api需要viewPager2的父布局为ConstraintLayout
+        if (mViewPager2.parent !is ConstraintLayout) {
+            //使用者viewPager2的父布局不是ConstraintLayout，可以在xml里使用具体demo有演示（这种方式，可以使用指示器所有自定义属性）
+            throw IllegalArgumentException("viewPager2’s  parent layout needs to be ConstraintLayout.or you can use indicator in your xml")
+        }
+//        when (smartIndicator) {
+//            SmartIndicator.CIRCLE -> {
+//
+//            }
+//
+//            SmartIndicator.LINE -> {
+//
+//            }
+//        }
+        mViewPager2.post {
+            if (mBindIndicator == null) {
+                mBindIndicator = if (smartIndicator == SmartIndicator.CIRCLE) CircleIndicator(mViewPager2.context) else LineIndicator(mViewPager2.context)
+                (mViewPager2.parent as ConstraintLayout).addView(mBindIndicator as View)
+                var layoutParams = (mBindIndicator as View).layoutParams as ConstraintLayout.LayoutParams
+
+                when (smartGravity) {
+                    SmartGravity.CENTER_HORIZONTAL_BOTTOM -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        if (smartIndicator == SmartIndicator.LINE) {
+                            layoutParams.width = ConstraintLayout.LayoutParams.MATCH_CONSTRAINT
+                            layoutParams.leftMargin = mViewPager2.context.resources.getDimension(R.dimen.default_space_line).toInt()
+                            layoutParams.rightMargin = mViewPager2.context.resources.getDimension(R.dimen.default_space_line).toInt()
+                        }
+
+                        layoutParams.bottomMargin = if (smartIndicator == SmartIndicator.CIRCLE) verticalMargin else mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin_line).toInt()
+                    }
+
+                    SmartGravity.CENTER_HORIZONTAL_TOP -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.topMargin = verticalMargin
+                    }
+
+                    SmartGravity.LEFT_TOP -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.topMargin = verticalMargin
+                        layoutParams.leftMargin = horizontalMargin
+                    }
+
+                    SmartGravity.LEFT_BOTTOM -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        layoutParams.bottomMargin = verticalMargin
+                        layoutParams.leftMargin = horizontalMargin
+                    }
+
+                    SmartGravity.LEFT_CENTER_VERTICAL -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.leftMargin = horizontalMargin
+                    }
+
+                    SmartGravity.RIGHT_TOP -> {
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.topMargin = verticalMargin
+                        layoutParams.rightMargin = horizontalMargin
+                    }
+
+                    SmartGravity.RIGHT_BOTTOM -> {
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        layoutParams.bottomMargin = verticalMargin
+                        layoutParams.rightMargin = horizontalMargin
+                    }
+
+                    SmartGravity.RIGHT_CENTER_VERTICAL -> {
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.rightMargin = horizontalMargin
+                    }
+                }
+
+                (mBindIndicator as View).layoutParams = layoutParams
+                registerScrollListenerWithIndicator(mBindIndicator as BaseIndicator)
+                notifyDataSetIndicator(mBindIndicator as BaseIndicator)
+            }
+        }
+    }
+
+    private fun notifyDataSetIndicator(indicator: BaseIndicator?) {
+        Log.e("没有触发这里的嘛", "是不是空 = ${indicator == null} 当前的size = ${mDataList.size} 当前的current = ${mViewPager2.currentItem}")
+        indicator?.let {
+            indicator?.setTotalCount(mDataList.size)
+            indicator?.setCurrentIndex(mViewPager2.currentItem)
+            indicator?.notifyDataSetChanged()
+        }
+    }
+
+    private fun registerScrollListenerWithIndicator(indicator: BaseIndicator) {
+        mViewPager2.registerOnPageChangeCallback(object : OnPageChangeCallback() {
+            override fun onPageScrolled(
+                position: Int,
+                positionOffset: Float,
+                positionOffsetPixels: Int,
+            ) {
+                super.onPageScrolled(position, positionOffset, positionOffsetPixels)
+                indicator.onPageScrolled(position, positionOffset, positionOffsetPixels)
+            }
+
+            override fun onPageScrollStateChanged(state: Int) {
+                super.onPageScrollStateChanged(state)
+                indicator.onPageScrollStateChanged(state)
+            }
+
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                indicator.onPageSelected(position)
+            }
+        })
+    }
+
+
 }
