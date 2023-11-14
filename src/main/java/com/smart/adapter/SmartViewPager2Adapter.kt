@@ -33,6 +33,7 @@ import com.smart.adapter.transformer.StereoPagerVerticalTransformer
 import com.smart.adapter.transformer.TransAlphScaleFormer
 import com.smart.adapter.util.ScreenUtils
 import com.smart.adapter.util.ViewPager2Util
+import java.lang.Deprecated
 import java.lang.ref.WeakReference
 
 
@@ -209,7 +210,8 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         }
     }
 
-    fun addData(list: MutableList<SmartFragmentTypeExEntity>): SmartViewPager2Adapter {
+    //泛型添加，集合多态实现不了，避免使用时转换问题
+    fun<T:SmartFragmentTypeExEntity> addData(list: MutableList<T>): SmartViewPager2Adapter {
         if (list.isNullOrEmpty()) {
             return this
         }
@@ -233,7 +235,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         return this
     }
 
-    fun addFrontData(list: MutableList<SmartFragmentTypeExEntity>): SmartViewPager2Adapter {
+    fun <T:SmartFragmentTypeExEntity> addFrontData(list: MutableList<T>): SmartViewPager2Adapter {
         if (list.isNullOrEmpty()) {
             return this
         }
