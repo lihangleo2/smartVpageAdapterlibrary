@@ -24,6 +24,7 @@ import com.smart.adapter.interf.OnLoadMoreListener
 import com.smart.adapter.interf.OnRefreshListener
 import com.smart.adapter.interf.OnRefreshLoadMoreListener
 import com.smart.adapter.interf.SmartFragmentImpl
+import com.smart.adapter.interf.SmartFragmentImpl2
 import com.smart.adapter.interf.SmartFragmentTypeExEntity
 import com.smart.adapter.interf.onSideListener
 import com.smart.adapter.layoutmanager.ScrollSpeedManger
@@ -184,8 +185,14 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         }
         var targetFragment = fragments[bean.getFragmentType()]
         var realFragment = targetFragment?.newInstance() as Fragment
-        var smartFrgamentImpl = realFragment as SmartFragmentImpl
-        smartFrgamentImpl.initSmartFragmentData(bean)
+        if (realFragment is SmartFragmentImpl){
+            //此api将舍弃
+            var smartFrgamentImpl = realFragment as SmartFragmentImpl
+            smartFrgamentImpl.initSmartFragmentData(bean)
+        }else{
+            var smartFrgamentImpl = realFragment as SmartFragmentImpl2<SmartFragmentTypeExEntity>
+            smartFrgamentImpl.initSmartFragmentData(bean)
+        }
         return realFragment
     }
 
