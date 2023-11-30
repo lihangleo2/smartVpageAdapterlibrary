@@ -185,11 +185,11 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         }
         var targetFragment = fragments[bean.getFragmentType()]
         var realFragment = targetFragment?.newInstance() as Fragment
-        if (realFragment is SmartFragmentImpl){
+        if (realFragment is SmartFragmentImpl) {
             //此api将舍弃
             var smartFrgamentImpl = realFragment as SmartFragmentImpl
             smartFrgamentImpl.initSmartFragmentData(bean)
-        }else{
+        } else {
             var smartFrgamentImpl = realFragment as SmartFragmentImpl2<SmartFragmentTypeExEntity>
             smartFrgamentImpl.initSmartFragmentData(bean)
         }
@@ -218,7 +218,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
     //泛型添加，集合多态实现不了，避免使用时转换问题
-    fun<T:SmartFragmentTypeExEntity> addData(list: MutableList<T>): SmartViewPager2Adapter {
+    fun <T : SmartFragmentTypeExEntity> addData(list: MutableList<T>): SmartViewPager2Adapter {
         if (list.isNullOrEmpty()) {
             return this
         }
@@ -242,7 +242,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         return this
     }
 
-    fun <T:SmartFragmentTypeExEntity> addFrontData(list: MutableList<T>): SmartViewPager2Adapter {
+    fun <T : SmartFragmentTypeExEntity> addFrontData(list: MutableList<T>): SmartViewPager2Adapter {
         if (list.isNullOrEmpty()) {
             return this
         }
@@ -332,6 +332,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
         })
 
+        cancleSaveEnabled()
         setTouchListenerForViewPager2()
         ScrollSpeedManger.reflectLayoutManager(mViewPager2, this)
     }
@@ -391,11 +392,13 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         }
     }
 
+    private fun cancleSaveEnabled() {
+        mViewPager2.isSaveEnabled = false
+    }
 
     private fun updateLoadmore(tempSize: Int, netDataSize: Int) {
         notifyItemRangeChanged(tempSize, netDataSize)
     }
-
 
     private fun updateRefresh(tempSize: Int) {
         if (tempSize == 0) {
@@ -523,7 +526,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         return this
     }
 
-    fun setUserEnabled(isUserInputEnabled:Boolean):SmartViewPager2Adapter{
+    fun setUserEnabled(isUserInputEnabled: Boolean): SmartViewPager2Adapter {
         mViewPager2.isUserInputEnabled = isUserInputEnabled
         return this
     }
