@@ -36,6 +36,7 @@ import com.smart.adapter.util.ScreenUtils
 import com.smart.adapter.util.ViewPager2Util
 import java.lang.Deprecated
 import java.lang.ref.WeakReference
+import kotlin.math.min
 
 
 /**
@@ -193,6 +194,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             var smartFrgamentImpl = realFragment as SmartFragmentImpl2<SmartFragmentTypeExEntity>
             smartFrgamentImpl.initSmartFragmentData(bean)
         }
+        Log.e("这有点恶心", "+++++++++++++++++++++++++++++  createFragment")
         return realFragment
     }
 
@@ -202,19 +204,32 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         mDataList.size
     }
 
+    //
     override fun getItemId(position: Int): Long {
-        return if (mInfinite) {
-            if (mDataList.size <= mScreenMinNum) {
+        var beanExEntity = mDataList[position % mDataList.size]
+        if (beanExEntity.smartViewPagerId == 0L) {
+            if (mInfinite && mDataList.size <= mScreenMinNum) {
                 /*
                 * 注意无线循环时，数据不足一屏时，重写getItemId hashCode值
                 * */
-                (mDataList[position % mDataList.size].hashCode() + position).toLong()
+                return (mDataList[position % mDataList.size].hashCode() + position).toLong()
             } else {
-                mDataList[position % mDataList.size].hashCode().toLong()
+                beanExEntity.smartViewPagerId = mDataList[position % mDataList.size].hashCode().toLong()
             }
-        } else {
-            mDataList[position % mDataList.size].hashCode().toLong()
         }
+        return beanExEntity.smartViewPagerId
+//        return if (mInfinite) {
+//            if (mDataList.size <= mScreenMinNum) {
+//                /*
+//                * 注意无线循环时，数据不足一屏时，重写getItemId hashCode值
+//                * */
+//                (mDataList[position % mDataList.size].hashCode() + position).toLong()
+//            } else {
+//                mDataList[position % mDataList.size].hashCode().toLong()
+//            }
+//        } else {
+//            mDataList[position % mDataList.size].hashCode().toLong()
+//        }
     }
 
     //泛型添加，集合多态实现不了，避免使用时转换问题
@@ -490,8 +505,13 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     private var mInfinite = false
     fun setInfinite(isInfinite: Boolean = true): SmartViewPager2Adapter {
         this.mInfinite = isInfinite
-        mViewPager2.offscreenPageLimit = ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT
-        calculateScreenMinNum()
+        if (mInfinite) {
+            mViewPager2.offscreenPageLimit = ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT
+            var mRecycleView = ViewPager2Util.getRecycleFromViewPager2(mViewPager2)
+            //DEFAULT_CACHE_SIZE
+            mRecycleView?.setItemViewCacheSize(2)
+            calculateScreenMinNum()
+        }
         return this
     }
 
@@ -513,11 +533,15 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
 
     fun setOffscreenPageLimit(limit: Int): SmartViewPager2Adapter {
+        var mRecycleView = ViewPager2Util.getRecycleFromViewPager2(mViewPager2)
         if (mInfinite) {
             mViewPager2.offscreenPageLimit = ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT
+            //DEFAULT_CACHE_SIZE
+            mRecycleView?.setItemViewCacheSize(2)
             return this
         }
         mViewPager2.offscreenPageLimit = limit
+        mRecycleView?.setItemViewCacheSize(limit)
         return this
     }
 
