@@ -36,6 +36,7 @@ import com.smart.adapter.util.ScreenUtils
 import com.smart.adapter.util.ViewPager2Util
 import java.lang.Deprecated
 import java.lang.ref.WeakReference
+import kotlin.math.log
 import kotlin.math.min
 
 
@@ -90,7 +91,8 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
     // 轮播切换时间
-    private var mScrollTime: Long = 600L
+    private var mScrollTime: Long = -1L
+    private var mSetScrollTime = false
 
     /*
     * 左右边缘滑动监听
@@ -194,7 +196,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             var smartFrgamentImpl = realFragment as SmartFragmentImpl2<SmartFragmentTypeExEntity>
             smartFrgamentImpl.initSmartFragmentData(bean)
         }
-        Log.e("这有点恶心", "+++++++++++++++++++++++++++++  createFragment")
+        Log.e("createFragment", "+++++++++++++++++++++++++++++  createFragment$position")
         return realFragment
     }
 
@@ -207,29 +209,26 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     //
     override fun getItemId(position: Int): Long {
         var beanExEntity = mDataList[position % mDataList.size]
-        if (beanExEntity.smartViewPagerId == 0L) {
-            if (mInfinite && mDataList.size <= mScreenMinNum) {
-                /*
-                * 注意无线循环时，数据不足一屏时，重写getItemId hashCode值
-                * */
-                return (mDataList[position % mDataList.size].hashCode() + position).toLong()
-            } else {
-                beanExEntity.smartViewPagerId = mDataList[position % mDataList.size].hashCode().toLong()
-            }
-        }
-        return beanExEntity.smartViewPagerId
-//        return if (mInfinite) {
-//            if (mDataList.size <= mScreenMinNum) {
+//        if (beanExEntity.smartViewPagerId == 0L) {
+//            if (mInfinite && mDataList.size <= mScreenMinNum) {
 //                /*
 //                * 注意无线循环时，数据不足一屏时，重写getItemId hashCode值
 //                * */
-//                (mDataList[position % mDataList.size].hashCode() + position).toLong()
+//                return (mDataList[position % mDataList.size].hashCode() + position).toLong()
 //            } else {
-//                mDataList[position % mDataList.size].hashCode().toLong()
+//                beanExEntity.smartViewPagerId = mDataList[position % mDataList.size].hashCode().toLong()
 //            }
-//        } else {
-//            mDataList[position % mDataList.size].hashCode().toLong()
 //        }
+//        return beanExEntity.smartViewPagerId
+        //************
+        return if (mInfinite) {
+            (mDataList[position % mDataList.size].hashCode() + position).toLong()
+        } else {
+            if (beanExEntity.smartViewPagerId==0L){
+                beanExEntity.smartViewPagerId = mDataList[position % mDataList.size].hashCode().toLong()
+            }
+            beanExEntity.smartViewPagerId
+        }
     }
 
     //泛型添加，集合多态实现不了，避免使用时转换问题
@@ -261,7 +260,6 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         if (list.isNullOrEmpty()) {
             return this
         }
-        Log.e("这是添加数据的", "addFrontData====")
         mPreloadDataList.addAll(0, list)
         updateWithIdel(mViewPager2.scrollState)
         return this
@@ -278,7 +276,6 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
     fun getItem(@IntRange(from = 0) position: Int): SmartFragmentTypeExEntity {
         return if (mInfinite) {
-            Log.e("这里神的有问题嘛", "$position ---- ${mDataList.size} ==== ${position.toFloat() % mDataList.size.toFloat()}     这2个一样嘛${Int.MAX_VALUE}   这是按size取整${Int.MAX_VALUE / mDataList.size * mDataList.size}")
             mDataList[position % mDataList.size]
         } else {
             mDataList[position]
@@ -349,7 +346,6 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
         cancleSaveEnabled()
         setTouchListenerForViewPager2()
-        ScrollSpeedManger.reflectLayoutManager(mViewPager2, this)
     }
 
 
@@ -506,10 +502,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     fun setInfinite(isInfinite: Boolean = true): SmartViewPager2Adapter {
         this.mInfinite = isInfinite
         if (mInfinite) {
-            mViewPager2.offscreenPageLimit = ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT
-            var mRecycleView = ViewPager2Util.getRecycleFromViewPager2(mViewPager2)
-            //DEFAULT_CACHE_SIZE
-            mRecycleView?.setItemViewCacheSize(2)
+//            mViewPager2.offscreenPageLimit = ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT
             calculateScreenMinNum()
         }
         return this
@@ -533,15 +526,11 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
 
     fun setOffscreenPageLimit(limit: Int): SmartViewPager2Adapter {
-        var mRecycleView = ViewPager2Util.getRecycleFromViewPager2(mViewPager2)
-        if (mInfinite) {
-            mViewPager2.offscreenPageLimit = ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT
-            //DEFAULT_CACHE_SIZE
-            mRecycleView?.setItemViewCacheSize(2)
-            return this
-        }
+//        if (mInfinite) {
+//            mViewPager2.offscreenPageLimit = ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT
+//            return this
+//        }
         mViewPager2.offscreenPageLimit = limit
-        mRecycleView?.setItemViewCacheSize(limit)
         return this
     }
 
@@ -714,6 +703,16 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
     fun start(): SmartViewPager2Adapter {
         stop()
+        if (mScrollTime != -1L && !mSetScrollTime) {
+            mSetScrollTime = true
+            /*
+            * 注意设置了滚动时间，会重写layoutManager，ViewPager的缓存会失效，解决
+            * */
+            ScrollSpeedManger.reflectLayoutManager(mViewPager2, this)
+            //DEFAULT_CACHE_SIZE
+            ViewPager2Util.getRecycleFromViewPager2(mViewPager2)?.setItemViewCacheSize(mViewPager2.offscreenPageLimit)
+            //*******
+        }
         mViewPager2.postDelayed(mLoopTask, mLoopTime)
         return this;
     }
@@ -835,7 +834,6 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
     private fun notifyDataSetIndicator(indicator: BaseIndicator?) {
-        Log.e("没有触发这里的嘛", "是不是空 = ${indicator == null} 当前的size = ${mDataList.size} 当前的current = ${mViewPager2.currentItem}")
         indicator?.let {
             indicator?.setTotalCount(mDataList.size)
             indicator?.setCurrentIndex(mViewPager2.currentItem)
