@@ -206,25 +206,12 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         mDataList.size
     }
 
-    //
     override fun getItemId(position: Int): Long {
         var beanExEntity = mDataList[position % mDataList.size]
-//        if (beanExEntity.smartViewPagerId == 0L) {
-//            if (mInfinite && mDataList.size <= mScreenMinNum) {
-//                /*
-//                * 注意无线循环时，数据不足一屏时，重写getItemId hashCode值
-//                * */
-//                return (mDataList[position % mDataList.size].hashCode() + position).toLong()
-//            } else {
-//                beanExEntity.smartViewPagerId = mDataList[position % mDataList.size].hashCode().toLong()
-//            }
-//        }
-//        return beanExEntity.smartViewPagerId
-        //************
         return if (mInfinite) {
             (mDataList[position % mDataList.size].hashCode() + position).toLong()
         } else {
-            if (beanExEntity.smartViewPagerId==0L){
+            if (beanExEntity.smartViewPagerId == 0L) {
                 beanExEntity.smartViewPagerId = mDataList[position % mDataList.size].hashCode().toLong()
             }
             beanExEntity.smartViewPagerId
@@ -270,6 +257,12 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             return this
         }
         addFrontData(mutableListOf(bean))
+        return this
+    }
+
+    fun removeData(index: Int): SmartViewPager2Adapter {
+        notifyItemRemoved(index)
+        mDataList.removeAt(index)
         return this
     }
 
@@ -526,10 +519,6 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
 
     fun setOffscreenPageLimit(limit: Int): SmartViewPager2Adapter {
-//        if (mInfinite) {
-//            mViewPager2.offscreenPageLimit = ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT
-//            return this
-//        }
         mViewPager2.offscreenPageLimit = limit
         return this
     }
