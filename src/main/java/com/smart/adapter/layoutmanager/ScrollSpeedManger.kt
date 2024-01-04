@@ -13,8 +13,8 @@ import com.smart.adapter.SmartViewPager2Adapter
  */
 class ScrollSpeedManger : LinearLayoutManager {
     private lateinit var viewPager2: ViewPager2
-    private lateinit var smartViewPager2Adapter: SmartViewPager2Adapter
-    constructor(viewPager2: ViewPager2, smartViewPager2Adapter: SmartViewPager2Adapter,linearLayoutManager:LinearLayoutManager ) : super(viewPager2.context, linearLayoutManager.orientation, false) {
+    private lateinit var smartViewPager2Adapter: SmartViewPager2Adapter<*>
+    constructor(viewPager2: ViewPager2, smartViewPager2Adapter: SmartViewPager2Adapter<*>,linearLayoutManager:LinearLayoutManager ) : super(viewPager2.context, linearLayoutManager.orientation, false) {
         this.viewPager2 = viewPager2
         this.smartViewPager2Adapter = smartViewPager2Adapter
     }
@@ -31,7 +31,7 @@ class ScrollSpeedManger : LinearLayoutManager {
 
     companion object{
         @JvmStatic
-        fun reflectLayoutManager(viewPager2: ViewPager2, smartViewPager2Adapter: SmartViewPager2Adapter) {
+        fun reflectLayoutManager(viewPager2: ViewPager2, smartViewPager2Adapter: SmartViewPager2Adapter<*>) {
             if (smartViewPager2Adapter.getScrollTime() < 100) return
             try {
                 val recyclerView = viewPager2.getChildAt(0) as RecyclerView

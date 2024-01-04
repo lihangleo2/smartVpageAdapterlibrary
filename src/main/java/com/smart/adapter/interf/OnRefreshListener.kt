@@ -1,5 +1,6 @@
 package com.smart.adapter.interf
 
+import androidx.annotation.NonNull
 import com.smart.adapter.SmartViewPager2Adapter
 
 /**
@@ -7,5 +8,5 @@ import com.smart.adapter.SmartViewPager2Adapter
  * @Date 2023/9/6
  */
 interface OnRefreshListener {
-    fun onRefresh(smartAdapter: SmartViewPager2Adapter)
+    fun onRefresh(@NonNull smartAdapter: SmartViewPager2Adapter<*>)
 }

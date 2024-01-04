@@ -4,6 +4,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import androidx.annotation.IntRange
+import androidx.annotation.NonNull
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -24,7 +25,6 @@ import com.smart.adapter.interf.OnLoadMoreListener
 import com.smart.adapter.interf.OnRefreshListener
 import com.smart.adapter.interf.OnRefreshLoadMoreListener
 import com.smart.adapter.interf.SmartFragmentImpl
-import com.smart.adapter.interf.SmartFragmentImpl2
 import com.smart.adapter.interf.SmartFragmentTypeExEntity
 import com.smart.adapter.interf.onSideListener
 import com.smart.adapter.layoutmanager.ScrollSpeedManger
@@ -34,23 +34,17 @@ import com.smart.adapter.transformer.StereoPagerVerticalTransformer
 import com.smart.adapter.transformer.TransAlphScaleFormer
 import com.smart.adapter.util.ScreenUtils
 import com.smart.adapter.util.ViewPager2Util
-import java.lang.Deprecated
 import java.lang.ref.WeakReference
-import kotlin.math.log
-import kotlin.math.min
 
 
 /**
  * @Author leo2
  * @Date 2023/9/4
  */
-class SmartViewPager2Adapter : FragmentStateAdapter {
-    private val mDataList = mutableListOf<SmartFragmentTypeExEntity>()
+class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapter {
+    private val mDataList = mutableListOf<T>()
 
-    private val mPreloadDataList by lazy {
-        mutableListOf<SmartFragmentTypeExEntity>()
-    }
-
+    private val mPreloadDataList = mutableListOf<T>()
     private lateinit var mViewPager2: ViewPager2
     private var mRefreshListener: OnRefreshListener? = null
     private var mLoadMoreListener: OnLoadMoreListener? = null
@@ -111,51 +105,126 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
      * */
     private var mBindIndicator: BaseIndicator? = null
 
+    constructor(fragmentActivity: FragmentActivity, bindViewPager2: ViewPager2) : this(fragmentActivity.supportFragmentManager, fragmentActivity.lifecycle, bindViewPager2) {}
 
-    constructor(fragmentActivity: FragmentActivity, bindViewPager2: ViewPager2) : super(
-        fragmentActivity
-    ) {
-        this.mViewPager2 = bindViewPager2
-        this.mLifecycle = fragmentActivity.lifecycle
-        initSmartViewPager()
-    }
+    constructor(fragment: Fragment, bindViewPager2: ViewPager2) : this(fragment.childFragmentManager, fragment.lifecycle, bindViewPager2) {}
 
-    constructor(fragment: Fragment, bindViewPager2: ViewPager2) : super(fragment) {
-        this.mViewPager2 = bindViewPager2
-        this.mLifecycle = fragment.lifecycle
-        initSmartViewPager()
-    }
-
-    constructor(
-        fragmentManager: FragmentManager,
-        lifecycle: Lifecycle,
-        bindViewPager2: ViewPager2,
-    ) : super(fragmentManager, lifecycle) {
+    constructor(fragmentManager: FragmentManager, lifecycle: Lifecycle, bindViewPager2: ViewPager2) : super(fragmentManager, lifecycle) {
         //源码都会走这里
         this.mViewPager2 = bindViewPager2
         this.mLifecycle = lifecycle
         initSmartViewPager()
     }
 
+    /**
+     * 数据类api
+     * ********************************************************************
+     */
+    fun addData(@NonNull list: Collection<T>): SmartViewPager2Adapter<T> {
+        if (list.isNullOrEmpty()) {
+            return this
+        }
+        var lastIndex = mDataList.size
+        mDataList.addAll(list)
+        if (mInfinite) {
+            updateDataWithInfinite()
+        } else {
+            updateLoadmore(lastIndex, list.size)
+        }
+        updateRefreshLoadMoreState()
+        notifyDataSetIndicator(mBindIndicator)
+        return this
+    }
 
-    fun setOnRefreshListener(listener: OnRefreshListener): SmartViewPager2Adapter {
+    fun addData(bean: T): SmartViewPager2Adapter<T> {
+        if (bean == null) {
+            return this
+        }
+        addData(mutableListOf(bean))
+        return this
+    }
+
+    fun addFrontData(@NonNull list: Collection<T>): SmartViewPager2Adapter<T> {
+        if (list.isNullOrEmpty()) {
+            return this
+        }
+        mPreloadDataList.addAll(0, list)
+        updateWithIdel(mViewPager2.scrollState)
+        return this
+    }
+
+    fun addFrontData(bean: T): SmartViewPager2Adapter<T> {
+        if (bean == null) {
+            return this
+        }
+        addFrontData(mutableListOf(bean))
+        return this
+    }
+
+    //移除数据
+    fun removeData(index: Int): SmartViewPager2Adapter<T> {
+        notifyItemRemoved(index)
+        mDataList.removeAt(index)
+        return this
+    }
+
+
+    fun getItem(@IntRange(from = 0) position: Int): T {
+        return if (mInfinite) {
+            mDataList[position % mDataList.size]
+        } else {
+            mDataList[position]
+        }
+    }
+
+    fun getLastItem():T?{
+        return mDataList.lastOrNull()
+    }
+
+    fun getItemOrNull(@IntRange(from = 0) position: Int): T? {
+        return if (mInfinite) {
+            mDataList.getOrNull(position % mDataList.size)
+        } else {
+            mDataList.getOrNull(position)
+        }
+    }
+
+    //只允许获取数据
+    fun getData(): List<T> {
+        return mDataList
+    }
+
+
+    //如果返回 -1，表示不存在
+    fun getItemPosition(item: T?): Int {
+        return if (item != null && mDataList.isNotEmpty()) mDataList.indexOf(item) else -1
+    }
+
+    /***
+     * ********************************************************************
+     */
+
+
+    fun setOnRefreshListener(listener: OnRefreshListener): SmartViewPager2Adapter<T> {
         this.mRefreshListener = listener
+        checkIndexAndCallBack(mViewPager2.currentItem)
         return this
     }
 
-    fun setLoadMoreListener(listener: OnLoadMoreListener): SmartViewPager2Adapter {
+    fun setOnLoadMoreListener(listener: OnLoadMoreListener): SmartViewPager2Adapter<T> {
         this.mLoadMoreListener = listener
+        checkIndexAndCallBack(mViewPager2.currentItem)
         return this
     }
 
-    fun setOnRefreshLoadMoreListener(listener: OnRefreshLoadMoreListener): SmartViewPager2Adapter {
+    fun setOnRefreshLoadMoreListener(listener: OnRefreshLoadMoreListener): SmartViewPager2Adapter<T> {
         this.mRefreshListener = listener
         this.mLoadMoreListener = listener
         checkIndexAndCallBack(mViewPager2.currentItem)
         return this
     }
 
-    fun setOnSideListener(listener: onSideListener): SmartViewPager2Adapter {
+    fun setOnSideListener(listener: onSideListener): SmartViewPager2Adapter<T> {
         this.mSideListener = listener
         return this
     }
@@ -184,18 +253,16 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             mDataList[position]
         }
         if (fragments.isEmpty()) {
-            throw IllegalArgumentException("the fragments can not be empty")
+            throw IllegalArgumentException("the fragments can not be empty,add your fragments")
         }
         var targetFragment = fragments[bean.getFragmentType()]
         var realFragment = targetFragment?.newInstance() as Fragment
-        if (realFragment is SmartFragmentImpl) {
-            //此api将舍弃
-            var smartFrgamentImpl = realFragment as SmartFragmentImpl
-            smartFrgamentImpl.initSmartFragmentData(bean)
-        } else {
-            var smartFrgamentImpl = realFragment as SmartFragmentImpl2<SmartFragmentTypeExEntity>
-            smartFrgamentImpl.initSmartFragmentData(bean)
+
+        if (realFragment !is SmartFragmentImpl<*>) {
+            throw IllegalArgumentException("your fragment must implements SmartFragmentImpl<T>")
         }
+        var smartFrgamentImpl = realFragment as SmartFragmentImpl<T>
+        smartFrgamentImpl.initSmartFragmentData(bean)
         Log.e("createFragment", "+++++++++++++++++++++++++++++  createFragment$position")
         return realFragment
     }
@@ -216,78 +283,6 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             }
             beanExEntity.smartViewPagerId
         }
-    }
-
-    //泛型添加，集合多态实现不了，避免使用时转换问题
-    fun <T : SmartFragmentTypeExEntity> addData(list: MutableList<T>): SmartViewPager2Adapter {
-        if (list.isNullOrEmpty()) {
-            return this
-        }
-        var lastIndex = mDataList.size
-        mDataList.addAll(list)
-        if (mInfinite) {
-            updateDataWithInfinite()
-        } else {
-            updateLoadmore(lastIndex, list.size)
-        }
-        updateRefreshLoadMoreState()
-        notifyDataSetIndicator(mBindIndicator)
-        return this
-    }
-
-    fun addData(bean: SmartFragmentTypeExEntity): SmartViewPager2Adapter {
-        if (bean == null) {
-            return this
-        }
-        addData(mutableListOf(bean))
-        return this
-    }
-
-    fun <T : SmartFragmentTypeExEntity> addFrontData(list: MutableList<T>): SmartViewPager2Adapter {
-        if (list.isNullOrEmpty()) {
-            return this
-        }
-        mPreloadDataList.addAll(0, list)
-        updateWithIdel(mViewPager2.scrollState)
-        return this
-    }
-
-    fun addFrontData(bean: SmartFragmentTypeExEntity): SmartViewPager2Adapter {
-        if (bean == null) {
-            return this
-        }
-        addFrontData(mutableListOf(bean))
-        return this
-    }
-
-    fun removeData(index: Int): SmartViewPager2Adapter {
-        notifyItemRemoved(index)
-        mDataList.removeAt(index)
-        return this
-    }
-
-
-    fun getItem(@IntRange(from = 0) position: Int): SmartFragmentTypeExEntity {
-        return if (mInfinite) {
-            mDataList[position % mDataList.size]
-        } else {
-            mDataList[position]
-        }
-    }
-
-    fun getItemOrNull(@IntRange(from = 0) position: Int): SmartFragmentTypeExEntity? {
-        return if (mInfinite) {
-            mDataList.getOrNull(position % mDataList.size)
-        } else {
-            mDataList.getOrNull(position)
-        }
-    }
-
-    /**
-     * 如果返回 -1，表示不存在
-     */
-    fun getItemPosition(item: SmartFragmentTypeExEntity?): Int {
-        return if (item != null && mDataList.isNotEmpty()) mDataList.indexOf(item) else -1
     }
 
 
@@ -379,7 +374,8 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
                 }
 
                 MotionEvent.ACTION_CANCEL,
-                MotionEvent.ACTION_UP -> {
+                MotionEvent.ACTION_UP,
+                -> {
                     if (mLoopTask != null) {
                         start()
                     }
@@ -455,12 +451,12 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
      * 兜底策略，如果没有对应type的fragment则会用defaultFragment
      * 如果没有设置defaultFragment的话，则会取fragments里第一个添加元素，如果fragments为空则会报错
      * */
-    fun addDefaultFragment(fragment: Class<*>): SmartViewPager2Adapter {
+    fun addDefaultFragment(fragment: Class<*>): SmartViewPager2Adapter<T> {
         defaultFragment = fragment
         return this
     }
 
-    fun addFragment(type: Int, fragment: Class<*>): SmartViewPager2Adapter {
+    fun addFragment(type: Int, fragment: Class<*>): SmartViewPager2Adapter<T> {
         fragments[type] = fragment
         if (defaultFragment == null) {
             defaultFragment = fragments[type]
@@ -468,7 +464,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         return this
     }
 
-    fun cancleOverScrollMode(): SmartViewPager2Adapter {
+    fun cancleOverScrollMode(): SmartViewPager2Adapter<T> {
         ViewPager2Util.cancleViewPagerShadow(mViewPager2)
         return this
     }
@@ -477,7 +473,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     /**
      * 是否实现画廊
      */
-    fun asGallery(leftMargin: Int, rightMargin: Int): SmartViewPager2Adapter {
+    fun asGallery(leftMargin: Int, rightMargin: Int): SmartViewPager2Adapter<T> {
         var recycleView = ViewPager2Util.getRecycleFromViewPager2(mViewPager2)
         mLeftMargin = leftMargin
         mRightMargin = rightMargin
@@ -492,10 +488,9 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
     private var mInfinite = false
-    fun setInfinite(isInfinite: Boolean = true): SmartViewPager2Adapter {
+    fun setInfinite(isInfinite: Boolean = true): SmartViewPager2Adapter<T> {
         this.mInfinite = isInfinite
         if (mInfinite) {
-//            mViewPager2.offscreenPageLimit = ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT
             calculateScreenMinNum()
         }
         return this
@@ -508,7 +503,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
 
-    fun setVertical(isVertical: Boolean): SmartViewPager2Adapter {
+    fun setVertical(isVertical: Boolean): SmartViewPager2Adapter<T> {
         mViewPager2.orientation = if (isVertical) {
             ViewPager2.ORIENTATION_VERTICAL
         } else {
@@ -518,23 +513,23 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
 
-    fun setOffscreenPageLimit(limit: Int): SmartViewPager2Adapter {
+    fun setOffscreenPageLimit(limit: Int): SmartViewPager2Adapter<T> {
         mViewPager2.offscreenPageLimit = limit
         return this
     }
 
-    fun setPreLoadLimit(preLoadLimit: Int): SmartViewPager2Adapter {
+    fun setPreLoadLimit(preLoadLimit: Int): SmartViewPager2Adapter<T> {
         this.mPreLoadLimit = preLoadLimit
         return this
     }
 
-    fun setUserEnabled(isUserInputEnabled: Boolean): SmartViewPager2Adapter {
+    fun setUserEnabled(isUserInputEnabled: Boolean): SmartViewPager2Adapter<T> {
         mViewPager2.isUserInputEnabled = isUserInputEnabled
         return this
     }
 
 
-    fun setPagerTransformer(smartTransformer: SmartTransformer): SmartViewPager2Adapter {
+    fun setPagerTransformer(smartTransformer: SmartTransformer): SmartViewPager2Adapter<T> {
         when (smartTransformer) {
             SmartTransformer.TRANSFORMER_3D -> {
                 mViewPager2.setPageTransformer(
@@ -590,6 +585,23 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
 
 
     /**
+     * 调用此方法将结束refresh，滑动后会继续触发，
+     * （此次接口请求异常等情况，又没有做重试机制，可调用此方法结束此次加载）
+     * */
+    fun finishRefresh() {
+        updateRefreshLoadMoreState()
+    }
+
+
+    /**
+     * 调用此方法将结束LoadMore，同上
+     * */
+    fun finishLoadMore() {
+        updateRefreshLoadMoreState()
+    }
+
+
+    /**
      * 调用此方法将不再触发refresh监听
      * */
     fun finishRefreshWithNoMoreData() {
@@ -607,18 +619,18 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
 
-    internal class AutoLoopTask(viewPager2: ViewPager2, smartViewPager2Adapter: SmartViewPager2Adapter) : Runnable {
+    internal class AutoLoopTask(viewPager2: ViewPager2, smartViewPager2Adapter: SmartViewPager2Adapter<*>) : Runnable {
         private val referencePager: WeakReference<ViewPager2>
-        private val referenceAdapter: WeakReference<SmartViewPager2Adapter>
+        private val referenceAdapter: WeakReference<SmartViewPager2Adapter<*>>
 
         init {
             referencePager = WeakReference<ViewPager2>(viewPager2)
-            referenceAdapter = WeakReference<SmartViewPager2Adapter>(smartViewPager2Adapter)
+            referenceAdapter = WeakReference<SmartViewPager2Adapter<*>>(smartViewPager2Adapter)
         }
 
         override fun run() {
             val viewPager2: ViewPager2? = referencePager.get()
-            val smartViewPager2Adapter: SmartViewPager2Adapter? = referenceAdapter.get()
+            val smartViewPager2Adapter: SmartViewPager2Adapter<*>? = referenceAdapter.get()
             if (viewPager2 != null && smartViewPager2Adapter?.mAutoLoop == true) {
                 val count: Int = smartViewPager2Adapter.itemCount
                 if (count == 0) {
@@ -645,13 +657,13 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
 
-    fun isAutoLoop(autoLoop: Boolean = true): SmartViewPager2Adapter {
+    fun isAutoLoop(autoLoop: Boolean = true): SmartViewPager2Adapter<T> {
         this.mAutoLoop = autoLoop
         return this
     }
 
 
-    fun addLifecycleObserver(): SmartViewPager2Adapter {
+    fun addLifecycleObserver(): SmartViewPager2Adapter<T> {
         isAutoLoop()
         removeLifecycleObserver()
         mLifecycle?.addObserver(mLifecycleEventObserver)
@@ -663,7 +675,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
 
-    fun setLoopTime(loopTime: Long): SmartViewPager2Adapter {
+    fun setLoopTime(loopTime: Long): SmartViewPager2Adapter<T> {
         this.mLoopTime = loopTime
         //限定最小滚动时间
         if (mLoopTime < 500L) {
@@ -673,7 +685,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     }
 
 
-    fun setScrollTime(scrollTime: Long): SmartViewPager2Adapter {
+    fun setScrollTime(scrollTime: Long): SmartViewPager2Adapter<T> {
         this.mScrollTime = scrollTime
         return this
     }
@@ -690,7 +702,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         }
     }
 
-    fun start(): SmartViewPager2Adapter {
+    fun start(): SmartViewPager2Adapter<T> {
         stop()
         if (mScrollTime != -1L && !mSetScrollTime) {
             mSetScrollTime = true
@@ -706,7 +718,7 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
         return this;
     }
 
-    fun stop(): SmartViewPager2Adapter {
+    fun stop(): SmartViewPager2Adapter<T> {
         mViewPager2.removeCallbacks(mLoopTask)
         return this;
     }
@@ -715,12 +727,12 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
     /**
      * 指示器添加核心代码
      * */
-    fun withIndicator(smartIndicator: SmartIndicator = SmartIndicator.CIRCLE, smartGravity: SmartGravity = SmartGravity.CENTER_HORIZONTAL_BOTTOM, horizontalMargin: Int = mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin).toInt(), verticalMargin: Int = mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin).toInt()): SmartViewPager2Adapter {
+    fun withIndicator(smartIndicator: SmartIndicator = SmartIndicator.CIRCLE, smartGravity: SmartGravity = SmartGravity.CENTER_HORIZONTAL_BOTTOM, horizontalMargin: Int = mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin).toInt(), verticalMargin: Int = mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin).toInt()): SmartViewPager2Adapter<T> {
         createCircleIndicator(smartIndicator, smartGravity, horizontalMargin, verticalMargin)
         return this
     }
 
-    fun withIndicator(mBindIndicator: BaseIndicator): SmartViewPager2Adapter {
+    fun withIndicator(mBindIndicator: BaseIndicator): SmartViewPager2Adapter<T> {
         if (this.mBindIndicator == null) {
             this.mBindIndicator = mBindIndicator
             registerScrollListenerWithIndicator(mBindIndicator)
@@ -736,15 +748,6 @@ class SmartViewPager2Adapter : FragmentStateAdapter {
             //使用者viewPager2的父布局不是ConstraintLayout，可以在xml里使用具体demo有演示（这种方式，可以使用指示器所有自定义属性）
             throw IllegalArgumentException("viewPager2’s  parent layout needs to be ConstraintLayout.or you can use indicator in your xml")
         }
-//        when (smartIndicator) {
-//            SmartIndicator.CIRCLE -> {
-//
-//            }
-//
-//            SmartIndicator.LINE -> {
-//
-//            }
-//        }
         mViewPager2.post {
             if (mBindIndicator == null) {
                 mBindIndicator = if (smartIndicator == SmartIndicator.CIRCLE) CircleIndicator(mViewPager2.context) else LineIndicator(mViewPager2.context)

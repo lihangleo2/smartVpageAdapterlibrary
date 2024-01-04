@@ -7,5 +7,5 @@ import com.smart.adapter.SmartViewPager2Adapter
  * @Date 2023/9/6
  */
 interface OnLoadMoreListener {
-    fun onLoadMore(smartAdapter: SmartViewPager2Adapter)
+    fun onLoadMore(smartAdapter: SmartViewPager2Adapter<*>)
 }
