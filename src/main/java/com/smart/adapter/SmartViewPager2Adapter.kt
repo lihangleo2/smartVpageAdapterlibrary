@@ -85,8 +85,7 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
     }
 
     // 轮播切换时间
-    private var mScrollTime: Long = -1L
-    private var mSetScrollTime = false
+    private var mScrollTime: Long = 600L
 
     /*
     * 左右边缘滑动监听
@@ -117,8 +116,8 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
     }
 
     /**
-     * 数据类api
-     * ********************************************************************
+     * 1.数据类api
+     * *********************************************************************************************************
      */
     fun addData(@NonNull list: Collection<T>): SmartViewPager2Adapter<T> {
         if (list.isNullOrEmpty()) {
@@ -177,7 +176,7 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
         }
     }
 
-    fun getLastItem():T?{
+    fun getLastItem(): T? {
         return mDataList.lastOrNull()
     }
 
@@ -201,10 +200,14 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
     }
 
     /***
-     * ********************************************************************
+     * *********************************************************************************************************
      */
 
 
+    /**
+     * 2.监听类api
+     * *********************************************************************************************************
+     */
     fun setOnRefreshListener(listener: OnRefreshListener): SmartViewPager2Adapter<T> {
         this.mRefreshListener = listener
         checkIndexAndCallBack(mViewPager2.currentItem)
@@ -228,6 +231,10 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
         this.mSideListener = listener
         return this
     }
+
+    /***
+     * *********************************************************************************************************
+     */
 
     private fun checkIndexAndCallBack(position: Int) {
         //如果是无线循环模式，则不支持监听
@@ -664,7 +671,6 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
 
 
     fun addLifecycleObserver(): SmartViewPager2Adapter<T> {
-        isAutoLoop()
         removeLifecycleObserver()
         mLifecycle?.addObserver(mLifecycleEventObserver)
         return this
@@ -687,6 +693,7 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
 
     fun setScrollTime(scrollTime: Long): SmartViewPager2Adapter<T> {
         this.mScrollTime = scrollTime
+        ScrollSpeedManger.reflectLayoutManager(mViewPager2, this)
         return this
     }
 
@@ -704,16 +711,6 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
 
     fun start(): SmartViewPager2Adapter<T> {
         stop()
-        if (mScrollTime != -1L && !mSetScrollTime) {
-            mSetScrollTime = true
-            /*
-            * 注意设置了滚动时间，会重写layoutManager，ViewPager的缓存会失效，解决
-            * */
-            ScrollSpeedManger.reflectLayoutManager(mViewPager2, this)
-            //DEFAULT_CACHE_SIZE
-            ViewPager2Util.getRecycleFromViewPager2(mViewPager2)?.setItemViewCacheSize(mViewPager2.offscreenPageLimit)
-            //*******
-        }
         mViewPager2.postDelayed(mLoopTask, mLoopTime)
         return this;
     }
@@ -724,7 +721,7 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
     }
 
 
-    /**
+    /*
      * 指示器添加核心代码
      * */
     fun withIndicator(smartIndicator: SmartIndicator = SmartIndicator.CIRCLE, smartGravity: SmartGravity = SmartGravity.CENTER_HORIZONTAL_BOTTOM, horizontalMargin: Int = mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin).toInt(), verticalMargin: Int = mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin).toInt()): SmartViewPager2Adapter<T> {
