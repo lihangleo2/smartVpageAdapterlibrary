@@ -69,15 +69,11 @@ class ScrollSpeedManger : LinearLayoutManager {
 
 
     companion object {
-        private var isReflectLayoutManager = false
+
 
         @JvmStatic
         fun reflectLayoutManager(viewPager2: ViewPager2, smartViewPager2Adapter: SmartViewPager2Adapter<*>) {
-            if (isReflectLayoutManager) {
-                return
-            }
             if (smartViewPager2Adapter.getScrollTime() < 100) return
-            isReflectLayoutManager = true
             try {
                 val recyclerView = viewPager2.getChildAt(0) as RecyclerView
                 val speedManger = (recyclerView.layoutManager as LinearLayoutManager?)?.let { ScrollSpeedManger(viewPager2, smartViewPager2Adapter, it) }
