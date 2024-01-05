@@ -528,7 +528,7 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
                 MotionEvent.ACTION_CANCEL,
                 MotionEvent.ACTION_UP,
                 -> {
-                    if (mLoopTask != null) {
+                    if (this.smartInfo.mAutoLoop) {
                         start()
                     }
 
