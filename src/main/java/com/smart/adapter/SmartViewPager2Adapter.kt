@@ -14,6 +14,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.AdapterDataObserver
 import androidx.viewpager2.adapter.FragmentStateAdapter
+import androidx.viewpager2.adapter.FragmentViewHolder
 import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import com.smart.adapter.indicator.BaseIndicator
@@ -304,6 +305,52 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
         this.smartInfo.lifecycle?.removeObserver(mLifecycleEventObserver)
     }
 
+    /**
+     * 调用此方法将结束refresh，滑动后会继续触发，
+     * （此次接口请求异常等情况，又没有做重试机制，可调用此方法结束此次加载）
+     * */
+    fun finishRefresh() {
+        updateRefreshLoadMoreState()
+    }
+
+
+    /**
+     * 调用此方法将结束LoadMore，同上
+     * */
+    fun finishLoadMore() {
+        updateRefreshLoadMoreState()
+    }
+
+
+    /**
+     * 调用此方法将不再触发refresh监听
+     * */
+    fun finishRefreshWithNoMoreData() {
+        hasRefresh = false
+        updateRefreshLoadMoreState()
+    }
+
+
+    /**
+     * 调用此方法将不再触发LoadMore监听
+     * */
+    fun finishLoadMoreWithNoMoreData() {
+        hasLoadMore = false
+        updateRefreshLoadMoreState()
+    }
+
+
+    fun start(): SmartViewPager2Adapter<T> {
+        stop()
+        mViewPager2.postDelayed(mLoopTask, this.smartInfo.mLoopTime)
+        return this
+    }
+
+    fun stop(): SmartViewPager2Adapter<T> {
+        mViewPager2.removeCallbacks(mLoopTask)
+        return this
+    }
+
 
     /***
      * *********************************************************************************************************
@@ -587,42 +634,6 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
         }
     }
 
-
-    /**
-     * 调用此方法将结束refresh，滑动后会继续触发，
-     * （此次接口请求异常等情况，又没有做重试机制，可调用此方法结束此次加载）
-     * */
-    fun finishRefresh() {
-        updateRefreshLoadMoreState()
-    }
-
-
-    /**
-     * 调用此方法将结束LoadMore，同上
-     * */
-    fun finishLoadMore() {
-        updateRefreshLoadMoreState()
-    }
-
-
-    /**
-     * 调用此方法将不再触发refresh监听
-     * */
-    fun finishRefreshWithNoMoreData() {
-        hasRefresh = false
-        updateRefreshLoadMoreState()
-    }
-
-
-    /**
-     * 调用此方法将不再触发LoadMore监听
-     * */
-    fun finishLoadMoreWithNoMoreData() {
-        hasLoadMore = false
-        updateRefreshLoadMoreState()
-    }
-
-
     internal class AutoLoopTask(viewPager2: ViewPager2, smartViewPager2Adapter: SmartViewPager2Adapter<*>) : Runnable {
         private val referencePager: WeakReference<ViewPager2>
         private val referenceAdapter: WeakReference<SmartViewPager2Adapter<*>>
@@ -635,8 +646,8 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
         override fun run() {
             val viewPager2: ViewPager2? = referencePager.get()
             val smartViewPager2Adapter: SmartViewPager2Adapter<*>? = referenceAdapter.get()
-            if (viewPager2 != null && smartViewPager2Adapter?.smartInfo!!.mAutoLoop) {
-                val count: Int = smartViewPager2Adapter.itemCount
+            if (viewPager2 != null) {
+                val count: Int = smartViewPager2Adapter!!.itemCount
                 if (count == 0) {
                     return
                 }
@@ -668,16 +679,6 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
         }
     }
 
-    fun start(): SmartViewPager2Adapter<T> {
-        stop()
-        mViewPager2.postDelayed(mLoopTask, this.smartInfo.mLoopTime)
-        return this
-    }
-
-    fun stop(): SmartViewPager2Adapter<T> {
-        mViewPager2.removeCallbacks(mLoopTask)
-        return this
-    }
 
 
     private fun notifyDataSetIndicator(indicator: BaseIndicator?) {
