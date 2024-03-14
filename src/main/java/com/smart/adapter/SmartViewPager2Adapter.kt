@@ -680,7 +680,6 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
     }
 
 
-
     private fun notifyDataSetIndicator(indicator: BaseIndicator?) {
         indicator?.let {
             indicator?.setTotalCount(mDataList.size)
@@ -916,6 +915,59 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
                 (this.smartInfo.mBindIndicator as View).layoutParams = layoutParams
             }
         }
+    }
+
+
+    /**
+     * 不需要数据源，需要真实的fragment实例1
+     * */
+    class CustomFragmentBuilder{
+        private val smartInfo: SmartInfo = SmartInfo()
+        private var context: Context? = null
+
+        constructor(fragmentActivity: FragmentActivity) {
+            this.smartInfo.fragmentManager = fragmentActivity.supportFragmentManager
+            this.smartInfo.lifecycle = fragmentActivity.lifecycle
+            this.context = fragmentActivity
+        }
+
+        constructor(fragment: Fragment) {
+            this.smartInfo.fragmentManager = fragment.childFragmentManager
+            this.smartInfo.lifecycle = fragment.lifecycle
+            this.context = fragment.requireContext()
+        }
+
+
+        public fun build(viewPager2: ViewPager2): SmartViewPager2Adapter<SmartFragmentTypeExEntity> {
+            if (this.smartInfo.offscreenPageLimit != -1) {
+                viewPager2.offscreenPageLimit = this.smartInfo.offscreenPageLimit
+            }
+
+            if (this.smartInfo.isVerticalFlag != -1) {
+                viewPager2.orientation = if (this.smartInfo.isVerticalFlag == 0) {
+                    ViewPager2.ORIENTATION_VERTICAL
+                } else {
+                    ViewPager2.ORIENTATION_HORIZONTAL
+                }
+            }
+
+            if (this.smartInfo.isGallery) {
+                var recycleView = ViewPager2Util.getRecycleFromViewPager2(viewPager2)
+                if (viewPager2.orientation == ViewPager2.ORIENTATION_HORIZONTAL) {
+                    recycleView?.setPadding(this.smartInfo.mLeftMargin, 0, this.smartInfo.mRightMargin, 0)
+                } else {
+                    recycleView?.setPadding(0, this.smartInfo.mLeftMargin, 0, this.smartInfo.mRightMargin)
+                }
+                recycleView?.clipToPadding = false
+            }
+
+            if (this.smartInfo.isIndicatorFlag == 1) {
+//                createCircleIndicator(this.smartInfo.smartIndicator, this.smartInfo.smartGravity, this.smartInfo.horizontalMargin, this.smartInfo.verticalMargin, viewPager2)
+            }
+
+            return SmartViewPager2Adapter(this.smartInfo, viewPager2)
+        }
+
     }
 
 }
