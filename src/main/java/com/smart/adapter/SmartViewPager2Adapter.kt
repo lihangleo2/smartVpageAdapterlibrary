@@ -919,9 +919,10 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
 
 
     /**
-     * 不需要数据源，需要真实的fragment实例1
+     * *********************************************************************************************
+     * 不需要数据源的构造器
      * */
-    class CustomFragmentBuilder{
+    class NoDataBuilder {
         private val smartInfo: SmartInfo = SmartInfo()
         private var context: Context? = null
 
@@ -937,8 +938,59 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
             this.context = fragment.requireContext()
         }
 
+        fun overScrollNever(): NoDataBuilder {
+            this.smartInfo.isOverScrollNever = true
+            return this
+        }
 
-        public fun build(viewPager2: ViewPager2): SmartViewPager2Adapter<SmartFragmentTypeExEntity> {
+        fun canScroll(enableScroll: Boolean): NoDataBuilder {
+            this.smartInfo.enableScroll = enableScroll
+            return this
+        }
+
+
+        fun asGallery(leftMargin: Int, rightMargin: Int): NoDataBuilder {
+            this.smartInfo.isGallery = true
+            this.smartInfo.mLeftMargin = leftMargin
+            this.smartInfo.mRightMargin = rightMargin
+            return this
+        }
+
+        fun setPagerTransformer(smartTransformer: SmartTransformer): NoDataBuilder {
+            this.smartInfo.smartTransformer = smartTransformer
+            return this
+        }
+
+        fun withIndicator(smartIndicator: SmartIndicator = SmartIndicator.CIRCLE, smartGravity: SmartGravity = SmartGravity.CENTER_HORIZONTAL_BOTTOM, horizontalMargin: Int = context!!.resources.getDimension(R.dimen.default_bottom_margin).toInt(), verticalMargin: Int = context!!.resources.getDimension(R.dimen.default_bottom_margin).toInt()): NoDataBuilder {
+            if (this.smartInfo.mBindIndicator == null) {
+                this.smartInfo.isIndicatorFlag = 1
+                this.smartInfo.smartIndicator = smartIndicator
+                this.smartInfo.smartGravity = smartGravity
+                this.smartInfo.horizontalMargin = horizontalMargin
+                this.smartInfo.verticalMargin = verticalMargin
+            }
+            return this
+        }
+
+        fun withIndicator(mBindIndicator: BaseIndicator): NoDataBuilder {
+            if (this.smartInfo.mBindIndicator == null) {
+                this.smartInfo.isIndicatorFlag = 0
+                this.smartInfo.mBindIndicator = mBindIndicator
+            }
+            return this
+        }
+
+        fun setVertical(isVertical: Boolean): NoDataBuilder {
+            this.smartInfo.isVerticalFlag = if (isVertical) {
+                0
+            } else {
+                1
+            }
+            return this
+        }
+
+
+        public fun build(viewPager2: ViewPager2): SmartNoDataAdapter {
             if (this.smartInfo.offscreenPageLimit != -1) {
                 viewPager2.offscreenPageLimit = this.smartInfo.offscreenPageLimit
             }
@@ -962,10 +1014,88 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
             }
 
             if (this.smartInfo.isIndicatorFlag == 1) {
-//                createCircleIndicator(this.smartInfo.smartIndicator, this.smartInfo.smartGravity, this.smartInfo.horizontalMargin, this.smartInfo.verticalMargin, viewPager2)
+                createCircleIndicator(this.smartInfo.smartIndicator, this.smartInfo.smartGravity, this.smartInfo.horizontalMargin, this.smartInfo.verticalMargin, viewPager2)
             }
+            return SmartNoDataAdapter(this.smartInfo, viewPager2)
+        }
 
-            return SmartViewPager2Adapter(this.smartInfo, viewPager2)
+
+        private fun createCircleIndicator(smartIndicator: SmartIndicator, smartGravity: SmartGravity, horizontalMargin: Int, verticalMargin: Int, mViewPager2: ViewPager2) {
+            //因为不是自定义view,利用viewPager2的父布局去添加指示器，此api需要viewPager2的父布局为ConstraintLayout
+            if (mViewPager2.parent !is ConstraintLayout) {
+                //使用者viewPager2的父布局不是ConstraintLayout，可以在xml里使用具体demo有演示（这种方式，可以使用指示器所有自定义属性）
+                throw IllegalArgumentException("viewPager2’s  parent layout needs to be ConstraintLayout.or you can use indicator in your xml")
+            }
+            if (this.smartInfo.mBindIndicator == null) {
+                this.smartInfo.mBindIndicator = if (smartIndicator == SmartIndicator.CIRCLE) CircleIndicator(mViewPager2.context) else LineIndicator(mViewPager2.context)
+                (mViewPager2.parent as ConstraintLayout).addView(this.smartInfo.mBindIndicator as View)
+                var layoutParams = (this.smartInfo.mBindIndicator as View).layoutParams as ConstraintLayout.LayoutParams
+
+                when (smartGravity) {
+                    SmartGravity.CENTER_HORIZONTAL_BOTTOM -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        if (smartIndicator == SmartIndicator.LINE) {
+                            layoutParams.width = ConstraintLayout.LayoutParams.MATCH_CONSTRAINT
+                            layoutParams.leftMargin = mViewPager2.context.resources.getDimension(R.dimen.default_space_line).toInt()
+                            layoutParams.rightMargin = mViewPager2.context.resources.getDimension(R.dimen.default_space_line).toInt()
+                        }
+
+                        layoutParams.bottomMargin = if (smartIndicator == SmartIndicator.CIRCLE) verticalMargin else mViewPager2.context.resources.getDimension(R.dimen.default_bottom_margin_line).toInt()
+                    }
+
+                    SmartGravity.CENTER_HORIZONTAL_TOP -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.topMargin = verticalMargin
+                    }
+
+                    SmartGravity.LEFT_TOP -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.topMargin = verticalMargin
+                        layoutParams.leftMargin = horizontalMargin
+                    }
+
+                    SmartGravity.LEFT_BOTTOM -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        layoutParams.bottomMargin = verticalMargin
+                        layoutParams.leftMargin = horizontalMargin
+                    }
+
+                    SmartGravity.LEFT_CENTER_VERTICAL -> {
+                        layoutParams.leftToLeft = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.leftMargin = horizontalMargin
+                    }
+
+                    SmartGravity.RIGHT_TOP -> {
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.topMargin = verticalMargin
+                        layoutParams.rightMargin = horizontalMargin
+                    }
+
+                    SmartGravity.RIGHT_BOTTOM -> {
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        layoutParams.bottomMargin = verticalMargin
+                        layoutParams.rightMargin = horizontalMargin
+                    }
+
+                    SmartGravity.RIGHT_CENTER_VERTICAL -> {
+                        layoutParams.rightToRight = mViewPager2.id
+                        layoutParams.bottomToBottom = mViewPager2.id
+                        layoutParams.topToTop = mViewPager2.id
+                        layoutParams.rightMargin = horizontalMargin
+                    }
+                }
+                (this.smartInfo.mBindIndicator as View).layoutParams = layoutParams
+            }
         }
 
     }
