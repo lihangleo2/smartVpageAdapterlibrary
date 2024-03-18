@@ -1,5 +1,6 @@
 package com.smart.adapter.info
 
+import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
@@ -61,4 +62,10 @@ class SmartInfo {
     var mScrollTime: Long = 600L// 轮播切换滚动速度
     var isFirstScroll = true //是否第一次设置，只需重写一次layoutManager
     var mHasSetScrollTime: Long = 0L//是否设置过滚动速度：OL表示未设置速度
+
+    /**
+     * 无数据源Adapter
+     * */
+    var mViewList: MutableList<View>? = null//无数据源绑定的view
+    var smoothScroll: Boolean = true//点击切换tab的时候，viewPager是否需要滚动效果
 }

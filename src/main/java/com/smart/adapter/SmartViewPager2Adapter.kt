@@ -989,6 +989,18 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
             return this
         }
 
+        fun bindViews(vararg views: View): NoDataBuilder {
+            if (this.smartInfo.mViewList.isNullOrEmpty()) {
+                this.smartInfo.mViewList = mutableListOf()
+                this.smartInfo.mViewList!!.addAll(views)
+            }
+            return this
+        }
+
+        fun smoothScroll(smoothScroll: Boolean): NoDataBuilder {
+            this.smartInfo.smoothScroll = smoothScroll
+            return this
+        }
 
         public fun build(viewPager2: ViewPager2): SmartNoDataAdapter {
             if (this.smartInfo.offscreenPageLimit != -1) {

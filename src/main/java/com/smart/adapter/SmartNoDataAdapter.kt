@@ -1,6 +1,6 @@
 package com.smart.adapter
 
-import android.util.Log
+import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.adapter.FragmentStateAdapter
@@ -22,7 +22,9 @@ import com.smart.adapter.util.ViewPager2Util
 class SmartNoDataAdapter : FragmentStateAdapter {
     private lateinit var smartInfo: SmartInfo
     private lateinit var mViewPager2: ViewPager2
-    private val mFragmentList = mutableListOf<Fragment>()
+    public val mFragmentList = mutableListOf<Fragment>()
+    private val mViewList = mutableListOf<View>()
+    private var mListener: OnClickListener? = null
 
     internal constructor(smartInfo: SmartInfo, viewPager2: ViewPager2) : super(smartInfo.fragmentManager!!, smartInfo.lifecycle!!) {
         this.smartInfo = smartInfo
@@ -45,9 +47,25 @@ class SmartNoDataAdapter : FragmentStateAdapter {
         return this
     }
 
-
     fun getFragment(position: Int): Fragment {
         return mFragmentList[position]
+    }
+
+    /**
+     * 此api,只允许fragments集合里每个fragment类型都唯一
+     * */
+    inline fun <reified T> getFragment(): T? {
+        var targetFragment: T? = null
+        mFragmentList.forEachIndexed { index, fragment ->
+            if (fragment is T) {
+                if (targetFragment == null) {
+                    targetFragment = fragment
+                } else {
+                    throw IllegalArgumentException("此api只适用fragments类型唯一，泛型存在多个实例")
+                }
+            }
+        }
+        return targetFragment
     }
 
     override fun createFragment(position: Int) = mFragmentList[position]
@@ -91,6 +109,7 @@ class SmartNoDataAdapter : FragmentStateAdapter {
             override fun onPageSelected(position: Int) {
                 super.onPageSelected(position)
                 smartInfo.mBindIndicator?.onPageSelected(position)
+                selectView(position)
             }
         })
 
@@ -140,10 +159,41 @@ class SmartNoDataAdapter : FragmentStateAdapter {
 
     private fun notifyDataSetIndicator(indicator: BaseIndicator?) {
         indicator?.let {
-            indicator?.setTotalCount(mFragmentList.size)
-            indicator?.setCurrentIndex(mViewPager2.currentItem)
-            indicator?.notifyDataSetChanged()
+            indicator.setTotalCount(mFragmentList.size)
+            indicator.setCurrentIndex(mViewPager2.currentItem)
+            indicator.notifyDataSetChanged()
         }
+    }
+
+    private fun selectView(position: Int) {
+        if (!smartInfo.mViewList.isNullOrEmpty() && position <= smartInfo.mViewList!!.size - 1) {//防止越界报错
+            smartInfo.mViewList!!.forEachIndexed { index, view ->
+                view.isSelected = index == position
+            }
+        }
+    }
+
+    private fun initViewClickListener() {
+        smartInfo.mViewList?.forEachIndexed { index, view ->
+            view.setOnClickListener {
+                if (mViewPager2.currentItem != index) {
+//                    mListener?.onClick(view)
+                    if (mListener?.onClick(view) == true) {
+                        mViewPager2.setCurrentItem(index, smartInfo.smoothScroll)
+                    }
+                }
+            }
+        }
+    }
+
+    interface OnClickListener {
+        fun onClick(v: View): Boolean
+    }
+
+    fun setOnClickListener(listener: OnClickListener): SmartNoDataAdapter {
+        this.mListener = listener
+        initViewClickListener()
+        return this
     }
 
 }
