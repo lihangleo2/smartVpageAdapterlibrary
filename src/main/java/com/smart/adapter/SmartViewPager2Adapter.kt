@@ -1003,10 +1003,6 @@ class SmartViewPager2Adapter<T : SmartFragmentTypeExEntity> : FragmentStateAdapt
         }
 
         public fun build(viewPager2: ViewPager2): SmartNoDataAdapter {
-            if (this.smartInfo.offscreenPageLimit != -1) {
-                viewPager2.offscreenPageLimit = this.smartInfo.offscreenPageLimit
-            }
-
             if (this.smartInfo.isVerticalFlag != -1) {
                 viewPager2.orientation = if (this.smartInfo.isVerticalFlag == 0) {
                     ViewPager2.ORIENTATION_VERTICAL

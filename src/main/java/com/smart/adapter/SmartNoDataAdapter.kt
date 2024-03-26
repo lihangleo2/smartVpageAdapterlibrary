@@ -43,6 +43,7 @@ class SmartNoDataAdapter : FragmentStateAdapter {
     fun setFragmentList(vararg fragments: Fragment): SmartNoDataAdapter {
         mFragmentList.clear()
         mFragmentList.addAll(fragments)
+        mViewPager2.offscreenPageLimit = mFragmentList.size
         notifyItemRangeChanged(0, mFragmentList.size)
         return this
     }
