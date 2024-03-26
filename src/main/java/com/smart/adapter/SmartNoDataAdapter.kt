@@ -125,7 +125,7 @@ class SmartNoDataAdapter : FragmentStateAdapter {
             }
 
         })
-
+        initViewClickListener()
         cancleSaveEnabled()
     }
 
@@ -177,9 +177,12 @@ class SmartNoDataAdapter : FragmentStateAdapter {
         smartInfo.mViewList?.forEachIndexed { index, view ->
             view.setOnClickListener {
                 if (mViewPager2.currentItem != index) {
-//                    mListener?.onClick(view)
-                    if (mListener?.onClick(view) == true) {
+                    if (mListener == null) {
                         mViewPager2.setCurrentItem(index, smartInfo.smoothScroll)
+                    } else {
+                        if (mListener!!.onClick(view)) {
+                            mViewPager2.setCurrentItem(index, smartInfo.smoothScroll)
+                        }
                     }
                 }
             }
