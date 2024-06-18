@@ -33,6 +33,7 @@ class SmartNoDataAdapter : FragmentStateAdapter {
     }
 
 
+    @Deprecated("replace addData()")
     fun setFragmentList(list: List<Fragment>): SmartNoDataAdapter {
         mFragmentList.clear()
         mFragmentList.addAll(list)
@@ -40,7 +41,23 @@ class SmartNoDataAdapter : FragmentStateAdapter {
         return this
     }
 
+    fun addData(list: List<Fragment>): SmartNoDataAdapter {
+        mFragmentList.clear()
+        mFragmentList.addAll(list)
+        notifyItemRangeChanged(0, mFragmentList.size)
+        return this
+    }
+
+    @Deprecated("replace addData()")
     fun setFragmentList(vararg fragments: Fragment): SmartNoDataAdapter {
+        mFragmentList.clear()
+        mFragmentList.addAll(fragments)
+        mViewPager2.offscreenPageLimit = mFragmentList.size
+        notifyItemRangeChanged(0, mFragmentList.size)
+        return this
+    }
+
+    fun addData(vararg fragments: Fragment): SmartNoDataAdapter {
         mFragmentList.clear()
         mFragmentList.addAll(fragments)
         mViewPager2.offscreenPageLimit = mFragmentList.size
